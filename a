@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fatura Hesaplama</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url('https://iaysr.tmgrup.com.tr/3fbb3a/780/411/0/139/567/437?u=https://iysr.tmgrup.com.tr/2024/05/13/dunyanin-en-eski-meslegi-ciftcilik-1715623451279.jpg');
+            background-size: cover;
+            background-attachment: fixed;
+            color: white;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1 {
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            margin: 0;
+        }
+
+        h2 {
+            background-color: rgba(0, 0, 0, 0.7);
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+
+        .container {
+            margin-top: 80px;
+        }
+
+        .input-section {
+            background-color: rgba(0, 0, 0, 0.5);
+            display: inline-block;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px;
+            width: 80%;
+        }
+
+        label, input, button {
+            margin: 10px;
+        }
+
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        .user-section {
+            margin-bottom: 20px;
+        }
+
+        .note {
+            background-color: rgba(0, 0, 0, 0.7);
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .results {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Geren Ovası - Fatura Hesaplama</h1>
+    <div class="container">
+        <div class="input-section">
+            <div id="kullanicilar">
+                <!-- Kullanıcılar ve kWh değerleri burada girilecek -->
+            </div>
+            <button onclick="kullaniciEkle()">Diğer Çiftçiye Geç</button>
+            <br><br>
+            <label for="toplam_fatura">Toplam Fatura (TL):</label>
+            <input type="number" id="toplam_fatura" value="100">
+            <br><br>
+            <button onclick="faturaHesapla()">Kişi Başına Düşen Faturayı Hesapla</button>
+            <br><br>
+            <h2>Sonuçlar:</h2>
+            <div id="sonuclar" class="results input-section"></div>
+            <br><br>
+            <button onclick="exportToExcel()">Excel Dökümünü Al</button>
+        </div>
+    </div>
+    <div class="note">
+        <p>Sayfa yenilendiğinde tüm değerler silinecektir.</p>
+    </div>
+
+    <script>
+        let kullaniciSayisi = 0;
+
+        function kullaniciEkle() {
+            kullaniciSayisi++;
+            const kullanicilarDiv = document.getElementById('kullanicilar');
+            const kullaniciDiv = document.createElement('div');
+            kullaniciDiv.id = 'kullanici' + kullaniciSayisi;
+            kullaniciDiv.className = 'user-section';
+            kullaniciDiv.innerHTML = `
+                <h3>Kullanıcı ${kullaniciSayisi}</h3>
+                <label for="kullanici${kullaniciSayisi}_isim">Kullanıcı Adı:</label>
+                <input type="text" id="kullanici${kullaniciSayisi}_isim">
+                <div id="kullanici${kullaniciSayisi}_degerler">
+                    <label for="kullanici${kullaniciSayisi}_baslangic1">Başlangıç 1:</label>
+                    <input type="number" id="kullanici${kullaniciSayisi}_baslangic1">
+                    <label for="kullanici${kullaniciSayisi}_bitis1">Bitiş 1:</label>
+                    <input type="number" id="kullanici${kullaniciSayisi}_bitis1">
+                </div>
+                <button onclick="degerEkle(${kullaniciSayisi})">Sulama Sayısını Arttır</button>
+                <button onclick="degerAzalt(${kullaniciSayisi})">Sulama Sayısını Azalt</button>
+                <br><br>
+            `;
+            kullanicilarDiv.appendChild(kullaniciDiv);
+        }
+
+        function degerEkle(kullaniciId) {
+            const degerlerDiv = document.getElementById(`kullanici${kullaniciId}_degerler`);
+            const degerSayisi = degerlerDiv.querySelectorAll('input[type="number"]').length / 2 + 1;
+            const yeniDegerDiv = document.createElement('div');
+            yeniDegerDiv.innerHTML = `
+                <label for="kullanici${kullaniciId}_baslangic${degerSayisi}">Başlangıç ${degerSayisi}:</label>
+                <input type="number" id="kullanici${kullaniciId}_baslangic${degerSayisi}">
+                <label for="kullanici${kullaniciId}_bitis${degerSayisi}">Bitiş ${degerSayisi}:</label>
+                <input type="number" id="kullanici${kullaniciId}_bitis${degerSayisi}">
+            `;
+            degerlerDiv.appendChild(yeniDegerDiv);
+        }
+
+        function degerAzalt(kullaniciId) {
+            const degerlerDiv = document.getElementById(`kullanici${kullaniciId}_degerler`);
+            const degerSayisi = degerlerDiv.querySelectorAll('div').length;
+            if (degerSayisi > 1) {
+                degerlerDiv.removeChild(degerlerDiv.lastChild);
+            }
+        }
+
+        function kwFarki(baslangic, bitis) {
+            return bitis - baslangic;
+        }
+
+        function faturaHesapla() {
+            const kullanicilar = {};
+            for (let i = 1; i <= kullaniciSayisi; i++) {
+                const isim = document.getElementById(`kullanici${i}_isim`).value;
+                const degerler = document.getElementById(`kullanici${i}_degerler`).querySelectorAll('input[type="number"]');
+                const kwDegerleri = [];
+                for (let j = 0; j < degerler.length; j += 2) {
+                    const baslangic = parseFloat(degerler[j].value);
+                    const bitis = parseFloat(degerler[j + 1].value);
+                    if (!isNaN(baslangic) && !isNaN(bitis)) {
+                        kwDegerleri.push([baslangic, bitis]);
+                    }
+                }
+                kullanicilar[isim] = kwDegerleri;
+            }
+
+            const toplamFatura = parseFloat(document.getElementById('toplam_fatura').value);
+            const toplamKw = Object.values(kullanicilar).flat().reduce((sum, [baslangic, bitis]) => sum + kwFarki(baslangic, bitis), 0);
+
+            const kullaniciKw = {};
+            for (const kullanici in kullanicilar) {
+                const kullanilanKw = kullanicilar[kullanici].reduce((sum, [baslangic, bitis]) => sum + kwFarki(baslangic, bitis), 0);
+                kullaniciKw[kullanici] = kullanilanKw;
+            }
+
+            const sonuclarDiv = document.getElementById('sonuclar');
+            sonuclarDiv.innerHTML = '';
+            for (const kullanici in kullaniciKw) {
+                const payKw = kullaniciKw[kullanici];
+                const pay = (payKw / toplamKw) * toplamFatura;
+                const sonuc = document.createElement('p');
+                sonuc.innerText = `${kullanici}: ${pay.toFixed(2)} TL (kWh: ${payKw.toFixed(2)})`;
+                sonuclarDiv.appendChild(sonuc);
+            }
+        }
+
+        function exportToExcel() {
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet([]);
+            const kullaniciData = [];
+
+            for (let i = 1; i <= kullaniciSayisi; i++) {
+                const isim = document.getElementById(`kullanici${i}_isim`).value;
+                const degerler = document.getElementById(`kullanici${i}_degerler`).querySelectorAll('input[type="number"]');
+                const kwDegerleri = [];
+                for (let j = 0; j < degerler.length; j += 2) {
+                    const baslangic = parseFloat(degerler[j].value);
+                    const bitis = parseFloat(degerler[j + 1].value);
+                    if (!isNaN(baslangic) && !isNaN(bitis)) {
+                        kwDegerleri.push([baslangic, bitis]);
+                    }
+                }
+                kullaniciData.push({
+                    Kullanıcı: isim,
+                    'KW Değerleri': kwDegerleri.map(d => `Başlangıç: ${d[0]}, Bitiş: ${d[1]}`).join('; ')
+                });
+            }
+
+            const results = document.querySelectorAll('#sonuclar p');
+            results.forEach(result => {
+                const [isim, fatura] = result.innerText.split(': ');
+                kullaniciData.push({
+                    Kullanıcı: isim,
+                    Fatura: fatura
+                });
+            });
+
+            const wsData = XLSX.utils.json_to_sheet(kullaniciData);
+            XLSX.utils.book_append_sheet(wb, wsData, 'Fatura');
+            XLSX.writeFile(wb, 'Fatura_Hesaplama.xlsx');
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
+</body>
+</html>
